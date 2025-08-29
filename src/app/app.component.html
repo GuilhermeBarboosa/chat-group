@@ -1,74 +1,148 @@
-<!-- If the user is not connected, show the username input page -->
-<div *ngIf="!isConnected" id="username-page">
-  <div class="username-page-container">
-    <!-- Title of the username page -->
-    <h1 class="title">Type your username to join the Chatroom</h1>
+<div
+  class="h-screen w-screen bg-gradient-to-b from-indigo-50 via-purple-50 to-pink-50 text-slate-900 font-sans flex flex-col">
 
-    <!-- Form to input the username -->
-    <!-- When the form is submitted, it calls the connect() method -->
-    <form (ngSubmit)="connect()">
-      <div class="form-group">
-        <!-- Username input field bound to the username property -->
-        <input [(ngModel)]="username" name="username" type="text" id="name" placeholder="Username" autocomplete="off"
-          class="form-control" />
+  <!-- HEADER -->
+  <header
+    class="h-16 flex items-center justify-between px-6 bg-white/80 backdrop-blur border-b border-gray-200 shadow-sm">
+    <div class="flex items-center gap-4">
+      <div
+        class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white grid place-items-center font-bold text-lg shadow-md">
+        C</div>
+      <div class="leading-tight">
+        <h1 class="text-lg font-semibold text-indigo-800">Chat App</h1>
+        <p class="text-sm text-slate-500">Conecte-se e converse</p>
       </div>
-
-      <!-- Button to submit the username and connect to the chat -->
-      <div class="form-group">
-        <button type="submit" class="accent username-submit">Start Chatting</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- If the user is connected, show the chatroom interface -->
-<div *ngIf="isConnected" id="chatroom">
-  <div class="chat-container">
-    <!-- Chatroom header with title -->
-    <div class="chat-header">
-      <h2>Spring Boot WebSocket Demo App!</h2>
-
-      <p>Users online: {{ usersOnline }}</p>
     </div>
 
-    <!-- If a connection message exists, show it (e.g., "Connecting...") -->
-    <div *ngIf="connectingMessage" class="connecting">{{ connectingMessage }}</div>
+    <div class="flex items-center gap-3">
+      <span *ngIf="isConnected"
+        class="inline-flex items-center gap-2 rounded-full bg-green-50 text-green-700 ring-1 ring-green-200 px-3 py-1 text-sm font-medium">
+        <span class="relative flex h-3 w-3">
+          <span class="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
+          <span class="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
+        </span>
+        {{ username }}
+      </span>
+      <span *ngIf="!isConnected" class="text-sm text-slate-400">Desconectado</span>
+    </div>
+  </header>
 
-    <!-- Display the list of messages -->
-    <ul id="messageArea">
-      <!-- Loop through each message in the messages array -->
-      <!-- Use ngClass to conditionally apply a class based on the message type -->
-      <li *ngFor="let message of messages"
-        [ngClass]="{'event-message': message.type !== 'CHAT', 'chat-message': message.type === 'CHAT'}">
-        <!-- If the message is a chat message, show the sender's avatar (first letter of their name) with a background color -->
-        <i *ngIf="message.type === 'CHAT'" [style.backgroundColor]="getAvatarColor(message.sender)">{{
-          message.sender.charAt(0) }}</i>
+  <!-- BODY -->
+  <div class="flex flex-1 min-h-0">
 
-        <!-- Display the sender's name if it's a chat message -->
-        <span *ngIf="message.type === 'CHAT'">{{ message.sender }}</span>
-
-        <!-- Display the content of the message -->
-        <!-- If it's a chat message, show the content -->
-        <!-- If it's an event message (JOIN/LEAVE), show a notification like "User joined!" -->
-        <p>{{ message.type === 'CHAT' ? message.content : message.sender + ' ' + (message.type === 'JOIN' ? 'joined!' :
-          'left!') }}</p>
-      </li>
-    </ul>
-
-    <!-- Form to type and send new chat messages -->
-    <!-- When the form is submitted, it calls the sendMessage() method -->
-    <form (ngSubmit)="sendMessage()" id="typingArea">
-      <div class="form-group">
-        <div class="input-group clearfix">
-          <!-- Input field bound to the message property for typing new messages -->
-          <input [(ngModel)]="message" name="message" type="text" id="message" placeholder="Write a message..."
-            autocomplete="off" class="form-control" />
-
-          <!-- Button to send the message -->
-          <button type="submit" class="primary">Send</button>
+    <!-- LOGIN -->
+    <section *ngIf="!isConnected" class="w-full flex items-center justify-center p-6">
+      <div class="w-full max-w-md bg-white/90 rounded-3xl shadow-lg p-8 backdrop-blur border border-gray-200">
+        <h2 class="text-xl font-bold mb-2 text-purple-800">Bem-vindo</h2>
+        <p class="text-sm text-slate-600 mb-6">Entre com seu nome para iniciar o chat.</p>
+        <div class="flex gap-3">
+          <input type="text" [(ngModel)]="username" placeholder="Seu nome"
+            class="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/90 backdrop-blur" />
+          <button (click)="connect()"
+            class="rounded-xl bg-purple-600 text-white px-5 py-2 text-sm font-medium shadow hover:bg-purple-700 transition transform active:scale-95">
+            Conectar
+          </button>
         </div>
       </div>
-    </form>
+    </section>
 
+    <!-- CHAT -->
+    <div *ngIf="isConnected" class="flex flex-1 min-h-0">
+
+      <!-- MAIN -->
+      <main class="flex-1 flex flex-col min-h-0 bg-gradient-to-b from-purple-50 to-pink-50">
+
+        <!-- MENSAGENS -->
+        <div class="h-full overflow-y-auto px-5 py-4 space-y-4" #messageContainer>
+          <ng-container *ngFor="let msg of messages; let i = index">
+
+            <!-- eventos JOIN/LEAVE -->
+            <div *ngIf="msg.type === 'JOIN' && msg.sender != username" class="grid">
+              <div class="mx-auto text-xs text-white bg-green-500 rounded-full px-4 py-1 shadow-md animate-fade">
+                {{ msg.sender }} entrou no chat
+              </div>
+            </div>
+
+            <div *ngIf="msg.type === 'LEAVE' && msg.sender != username" class="grid">
+              <div class="mx-auto text-xs text-white bg-red-500 rounded-full px-4 py-1 shadow-md animate-fade">
+                {{ msg.sender }} saiu do chat
+              </div>
+            </div>
+
+            <!-- bolhas de chat -->
+            <div *ngIf="msg.type === 'CHAT'" class="flex"
+              [ngClass]="{ 'justify-end': msg.sender === username, 'justify-start': msg.sender !== username }">
+
+              <!-- avatar esquerdo -->
+              <div class="mr-2" *ngIf="msg.sender !== username">
+                <div
+                  class="h-10 w-10 rounded-full bg-gradient-to-br from-purple-300 to-pink-300 grid place-items-center text-sm text-white font-semibold shadow">
+                  {{ (msg.sender || '?')[0] | uppercase }}
+                </div>
+              </div>
+
+              <!-- conteúdo -->
+              <div class="max-w-[75%] sm:max-w-[65%]">
+                <div class="text-xs text-slate-500 mb-1" [ngClass]="{ 'text-right': msg.sender === username }">
+                  {{ msg.sender }} · <span class="opacity-70">{{ msg.time || 'agora' }}</span>
+                </div>
+                <div class="px-4 py-2 rounded-2xl text-sm leading-relaxed shadow-sm border rounded-md" [ngClass]="msg.sender === username
+                      ? 'bg-purple-600 text-white border-purple-600'
+                      : 'bg-white text-slate-900 border-gray-200'">
+                  {{ msg.content }}
+                </div>
+              </div>
+
+              <!-- avatar direito -->
+              <div class="ml-2" *ngIf="msg.sender === username">
+                <div
+                  class="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-base text-white font-semibold shadow">
+                  {{ (username || '?')[0] | uppercase }}
+                </div>
+              </div>
+
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- COMPOSER -->
+        <div class="sticky bottom-0 px-5 pb-5 bg-white/70 backdrop-blur rounded border-gray-200">
+          <div class="rounded-2xl border border-gray-200 bg-white shadow-lg flex items-center gap-3 px-4 py-3">
+            <input type="text" [(ngModel)]="messageContent" placeholder="Escreva uma mensagem…"
+              (keyup.enter)="sendMessage()" class="rounded border-gray-200 flex-1 bg-transparent outline-none text-sm py-2" />
+            <button (click)="sendMessage()"
+              class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white px-4 py-2 text-sm font-medium shadow hover:from-purple-700 hover:to-pink-600 transition transform active:scale-95">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l14-7-7 14-2-5-5-2z" />
+              </svg>
+              Enviar
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <!-- SIDEBAR -->
+      <aside
+        class="w-80 flex-shrink-0 border-l border-gray-200 bg-white/70 backdrop-blur shadow-inner flex flex-col min-h-0">
+        <div class="px-5 py-4 border-b border-gray-200">
+          <h3 class="text-sm font-semibold text-purple-800">Sala</h3>
+        </div>
+
+        <div class="p-5 text-sm flex-1 overflow-y-auto">
+          <div
+            class="h-10 flex items-center justify-between rounded-xl px-4 py-2 bg-purple-50 shadow-sm border border-gray-200">
+            <span class="text-purple-700 font-medium">Online agora</span>
+            <span class="font-semibold text-purple-900">{{ usersOnline }}</span>
+          </div>
+
+          <div class="rounded-xl mt-5 px-4 py-3 bg-white shadow-sm border border-gray-200">
+            <p class="text-xs text-slate-400 mb-2">Lista de usuários</p>
+            <p *ngFor="let item of users"
+              class="text-sm text-purple-800 py-1 border-b border-gray-200 last:border-none">{{ item }}</p>
+          </div>
+        </div>
+      </aside>
+    </div>
   </div>
 </div>

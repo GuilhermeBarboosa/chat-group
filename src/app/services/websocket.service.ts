@@ -15,6 +15,9 @@ export class WebsocketService {
   private usersSubject = new BehaviorSubject<any>(null);
   public users$ = this.usersSubject.asObservable();
 
+  private usersListSubject = new BehaviorSubject<any>(null);
+  public usersList$ = this.usersListSubject.asObservable();
+
   private connectionSubject = new BehaviorSubject<boolean>(false);
   public connectionStatus$ = this.connectionSubject.asObservable();
 
@@ -33,35 +36,46 @@ export class WebsocketService {
       console.log('Connected: ' + frame);
       this.connectionSubject.next(true);
 
-      this.stompClient?.subscribe('/topic/public', (message: Message) => {
-        this.messageSubject.next(JSON.parse(message.body));
+      // Subscribe to users count
+      this.stompClient?.subscribe('/topic/users', (msg) => {
+        this.usersSubject.next(Number(msg.body));
       });
 
-      this.stompClient?.subscribe('/topic/users', (m) => {
-        const { count } = JSON.parse(m.body);
-        console.log(count);
-        this.usersSubject.next(count);
+      this.stompClient?.subscribe('/topic/users/list', (msg) => {
+        this.usersListSubject.next(JSON.parse(msg.body));
       });
 
-      this.stompClient?.publish({
-        destination: '/app/users.request',
-        body: '{}',
-        headers: { 'content-type': 'application/json' },
+      // Subscribe to public chat
+      this.stompClient?.subscribe('/topic/public', (message) => {
+        const msg = JSON.parse(message.body);
+        this.messageSubject.next(msg);
+
+        // Só após receber confirmação de que o usuário entrou
+        if (msg.type === 'JOIN' && msg.sender === username) {
+          this.stompClient?.publish({ destination: '/app/chat.size' });
+          this.stompClient?.publish({ destination: '/app/chat.list.users' });
+        }
       });
 
+      // Publish addUser
       this.stompClient?.publish({
         destination: '/app/chat.addUser',
-        body: JSON.stringify({ sender: username, type: 'CHAT' }),
-        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sender: username, type: 'JOIN' }),
       });
     };
 
-    this.stompClient.onStompError = (frame) => {
-      console.error('Broker error: ' + frame);
-      console.error('Additional details: ' + frame.body);
-    };
+    // this.stompClient.onStompError = (frame) => {
+    //   console.error('Broker error: ' + frame);
+    //   console.error('Additional details: ' + frame.body);
+    // };
 
     this.stompClient?.activate();
+
+    window.addEventListener('beforeunload', () => {
+      this.stompClient?.publish({ destination: '/app/chat.leave' });
+
+      this.stompClient?.deactivate();
+    });
   }
 
   sendMessage(username: string, content: string) {

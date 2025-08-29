@@ -16,11 +16,13 @@ export class AppComponent implements OnInit {
   title = 'chat-group-front';
 
   username: string = '';
-  message: string = '';
+  users: any[] = [];
   messages: any[] = [];
   usersOnline: number = 0;
   isConnected = false;
   connectingMessage = 'Connecting';
+  userConnected = '';
+  messageContent: string = '';
 
   constructor(public websocketService: WebsocketService) {}
 
@@ -30,6 +32,7 @@ export class AppComponent implements OnInit {
     this.websocketService.message$.subscribe((message) => {
       if (message) {
         console.log('New message received:', message);
+        this.userConnected = message.content;
         this.messages.push(message);
       }
     });
@@ -44,13 +47,22 @@ export class AppComponent implements OnInit {
       }
     });
 
-    this.websocketService.users$.subscribe((userCount) => {
-      console.log("User count updated:", userCount);
-      this.usersOnline = userCount;
+    this.websocketService.users$.subscribe((count) => {
+      this.usersOnline = count;
     });
+
+    this.websocketService.usersList$.subscribe((users) => {
+      this.users = users;
+    });
+
+    if (localStorage.getItem('username')) {
+      this.username = localStorage.getItem('username')!;
+      this.websocketService.connect(this.username);
+    }
   }
 
   connect() {
+    localStorage.setItem('username', this.username);
     console.log(`Attempting to connect as ${this.username}`);
     this.websocketService.connect(this.username);
   }
@@ -58,9 +70,10 @@ export class AppComponent implements OnInit {
   sendMessage() {
     console.log('Message sent');
 
-    if (this.message) {
-      this.websocketService.sendMessage(this.username, this.message);
-      this.message = '';
+    if (this.messageContent) {
+      this.websocketService.sendMessage(this.username, this.messageContent);
+
+      this.messageContent = '';
     }
   }
 
@@ -77,11 +90,8 @@ export class AppComponent implements OnInit {
     ];
     let hash = 0;
     for (let i = 0; i < sender.length; i++) {
-      // Generate a hash from the sender's name
       hash = 31 * hash + sender.charCodeAt(i);
     }
-    // Create a hash based on the username
-    // Return a color from the array based on the hash value
     return colors[Math.abs(hash % colors.length)];
   }
 }
